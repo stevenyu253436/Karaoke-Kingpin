@@ -1330,7 +1330,7 @@ namespace Karaoke_Kingpin
                 switch (selectedItem.Content.ToString())
                 {
                     case "編號查詢":
-                        filteredSongs = PerformArtistSearch(searchTextBox.Text);
+                        filteredSongs = PerformNumberSearch(searchTextBox.Text);
                         break;
                     case "歌星查詢":
                         filteredSongs = PerformArtistSearch(searchTextBox.Text);
