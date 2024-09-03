@@ -756,8 +756,25 @@ namespace Karaoke_Kingpin
         {
             if (SongsDataGrid.SelectedItem is SongData selectedSong)
             {
+                Console.WriteLine($"Attempting to delete song with SongNumber: {selectedSong.SongNumber}");
                 DeleteSongFromDatabase(selectedSong.SongNumber);
-                _songs.Remove(selectedSong);  // Remove the song from the ObservableCollection
+
+                // After deletion, check if it was successful before removing from ObservableCollection
+                if (!_songs.Any(s => s.SongNumber == selectedSong.SongNumber))
+                {
+                    Console.WriteLine("Song successfully deleted from database. Removing from UI.");
+                    _songs.Remove(selectedSong);  // Remove the song from the ObservableCollection
+                }
+                else
+                {
+                    Console.WriteLine("Song still exists in the database after attempted deletion.");
+                }
+                SongsDataGrid.ItemsSource = null;  // 清空 DataGrid 來源
+                SongsDataGrid.ItemsSource = _songs;  // 重新設置來源以觸發 UI 更新
+            }
+            else
+            {
+                Console.WriteLine("No song selected to delete.");
             }
         }
 
@@ -773,7 +790,16 @@ namespace Karaoke_Kingpin
                 {
                     command.Parameters.AddWithValue("@SongNumber", songNumber);
                     connection.Open();
-                    command.ExecuteNonQuery();
+
+                    int rowsAffected = command.ExecuteNonQuery();
+                    if (rowsAffected > 0)
+                    {
+                        Console.WriteLine($"Song with SongNumber: {songNumber} successfully deleted.");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Failed to delete song with SongNumber: {songNumber}.");
+                    }
                 }
             }
         }
