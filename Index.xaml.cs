@@ -33,6 +33,7 @@ using System.Reflection;
 using ExcelDataReader;
 using System.Text.RegularExpressions;
 using System.Windows.Threading;
+using System.Windows.Forms;
 
 namespace Karaoke_Kingpin
 {
@@ -211,7 +212,7 @@ namespace Karaoke_Kingpin
         private void CheckBox_Checked_Unchecked(object sender, RoutedEventArgs e)
         {
             // 处理复选框的选中和取消选中逻辑，例如更新UI或发送数据等
-            CheckBox checkBox = sender as CheckBox;
+            System.Windows.Controls.CheckBox checkBox = sender as System.Windows.Controls.CheckBox;
             if (checkBox.IsChecked == true)
             {
                 // 例如，发送开启的命令
@@ -1115,7 +1116,7 @@ namespace Karaoke_Kingpin
         {
             try
             {
-                SaveFileDialog saveFileDialog = new SaveFileDialog
+                Microsoft.Win32.SaveFileDialog saveFileDialog = new Microsoft.Win32.SaveFileDialog
                 {
                     Filter = "CSV file (*.csv)|*.csv|All files (*.*)|*.*",
                     FileName = "SongsExport.csv"
@@ -1189,7 +1190,7 @@ namespace Karaoke_Kingpin
 
         private void ImportSongsButton_Click(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog openFileDialog = new OpenFileDialog
+            Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog
             {
                 Filter = "Excel Files|*.xls;*.xlsx;*.xlsm",
                 Title = "Select an Excel File"
@@ -1199,70 +1200,103 @@ namespace Karaoke_Kingpin
             {
                 string filePath = openFileDialog.FileName;
                 List<SongData> songs = ImportSongsFromExcel(filePath);
-                SaveSongsToDatabase(songs);
-                System.Windows.MessageBox.Show("歌曲數據庫匯入成功！");
+
+                // Only show success message if songs are imported successfully (no errors)
+                if (songs != null && songs.Count > 0)
+                {
+                    SaveSongsToDatabase(songs);
+                    System.Windows.MessageBox.Show("歌曲數據庫匯入成功！");
+                }
+                else
+                {
+                    // Handle the case where the import failed or no valid songs were imported
+                    System.Windows.MessageBox.Show("匯入過程中發生錯誤，請檢查文件格式。");
+                }
             }
         }
 
         private List<SongData> ImportSongsFromExcel(string filePath)
         {
             var songs = new List<SongData>();
+            bool hasErrors = false; // Track if any errors occur
 
-            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
-
-            using (var stream = File.Open(filePath, FileMode.Open, FileAccess.Read))
+            try
             {
-                using (var reader = ExcelReaderFactory.CreateReader(stream))
+                System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
+                using (var stream = File.Open(filePath, FileMode.Open, FileAccess.Read))
                 {
-                    var result = reader.AsDataSet();
-                    var table = result.Tables[0];
-
-                    for (int i = 1; i < table.Rows.Count; i++) // Skip header row
+                    using (var reader = ExcelReaderFactory.CreateReader(stream))
                     {
-                        var row = table.Rows[i];
-                        var song = new SongData
-                        (
-                            row[0].ToString(),
-                            row[1].ToString(),
-                            row[2].ToString(),
-                            row[3].ToString(),
-                            row[4].ToString(),
-                            row[5].ToString(),
-                            row[6].ToString(),
-                            row[7].ToString(),
-                            row[8].ToString(),
-                            row[9].ToString(),
-                            row[10].ToString(),
-                            row[11].ToString(),
-                            int.TryParse(row[12].ToString(), out int plays) ? plays : 0,
-                            row[13].ToString(),
-                            row[14].ToString(),
-                            row[15].ToString(),
-                            row[16].ToString(),
-                            row[17].ToString(),
-                            row[18].ToString(),
-                            int.TryParse(row[19].ToString(), out int status) ? status : 0,
-                            int.TryParse(row[20].ToString(), out int songNameLength) ? songNameLength : 0,
-                            int.TryParse(row[21].ToString(), out int vocal) ? vocal : 0,
-                            int.TryParse(row[22].ToString(), out int status2) ? status2 : 0,
-                            row[23].ToString(),
-                            row[24].ToString(),
-                            row[25].ToString(),
-                            row[26].ToString(),
-                            row[27].ToString(),
-                            row[28].ToString(),
-                            row[29].ToString(),
-                            row[30].ToString(),
-                            row[31].ToString(),
-                            row[32].ToString()
-                        );
+                        var result = reader.AsDataSet();
+                        var table = result.Tables[0];
 
-                        songs.Add(song);
+                        for (int i = 1; i < table.Rows.Count; i++) // Skip header row
+                        {
+                            var row = table.Rows[i];
+
+                            // Check if row contains enough columns
+                            if (row.ItemArray.Length < 33)
+                            {
+                                System.Windows.MessageBox.Show($"Row {i + 1} does not have enough columns. Expected 33 but found {row.ItemArray.Length}.");
+                                hasErrors = true; // Mark that an error occurred
+                                continue; // Skip this row
+                            }
+
+                            // Assigning the value for column 32, if it exists
+                            string column32 = row.ItemArray.Length > 32 ? row[32].ToString() : "";
+
+                            var song = new SongData
+                            (
+                                row[0].ToString(),
+                                row[1].ToString(),
+                                row[2].ToString(),
+                                row[3].ToString(),
+                                row[4].ToString(),
+                                row[5].ToString(),
+                                row[6].ToString(),
+                                row[7].ToString(),
+                                row[8].ToString(),
+                                row[9].ToString(),
+                                row[10].ToString(),
+                                row[11].ToString(),
+                                int.TryParse(row[12].ToString(), out int plays) ? plays : 0,
+                                row[13].ToString(),
+                                row[14].ToString(),
+                                row[15].ToString(),
+                                row[16].ToString(),
+                                row[17].ToString(),
+                                row[18].ToString(),
+                                int.TryParse(row[19].ToString(), out int status) ? status : 0,
+                                int.TryParse(row[20].ToString(), out int songNameLength) ? songNameLength : 0,
+                                int.TryParse(row[21].ToString(), out int vocal) ? vocal : 0,
+                                int.TryParse(row[22].ToString(), out int status2) ? status2 : 0,
+                                row[23].ToString(),
+                                row[24].ToString(),
+                                row[25].ToString(),
+                                row[26].ToString(),
+                                row[27].ToString(),
+                                row[28].ToString(),
+                                row[29].ToString(),
+                                row[30].ToString(),
+                                row[31].ToString(),
+                                column32 // Optional column value
+                            );
+
+                            songs.Add(song);
+                        }
                     }
                 }
             }
+            catch (Exception ex)
+            {
+                // Show error message in a MessageBox
+                System.Windows.Forms.MessageBox.Show($"An error occurred while importing songs: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                hasErrors = true; // Mark that an error occurred
+            }
 
-            return songs;
+            // Return null if there were errors
+            return hasErrors ? null : songs;
         }
 
         private void SaveSongsToDatabase(List<SongData> songs)
@@ -1440,10 +1474,10 @@ namespace Karaoke_Kingpin
         private void Increase_Click(object sender, RoutedEventArgs e)
         {
             // 获取触发事件的按钮
-            Button button = sender as Button;
+            System.Windows.Controls.Button button = sender as System.Windows.Controls.Button;
             // 假设我们使用按钮的 Tag 属性来引用相关联的 TextBox
             // 例如, button.Tag = "valueTextBox";
-            TextBox textBox = this.FindName(button.Tag.ToString()) as TextBox;
+            System.Windows.Controls.TextBox textBox = this.FindName(button.Tag.ToString()) as System.Windows.Controls.TextBox;
             if (textBox != null)
             {
                 // 将文本框的值增加
@@ -1455,9 +1489,9 @@ namespace Karaoke_Kingpin
 
         private void Decrease_Click(object sender, RoutedEventArgs e)
         {
-            Button button = sender as Button;
+            System.Windows.Controls.Button button = sender as System.Windows.Controls.Button;
             // 与Increase_Click类似的逻辑，但是减少值
-            TextBox textBox = this.FindName(button.Tag.ToString()) as TextBox;
+            System.Windows.Controls.TextBox textBox = this.FindName(button.Tag.ToString()) as System.Windows.Controls.TextBox;
             if (textBox != null)
             {
                 int value = int.Parse(textBox.Text);
